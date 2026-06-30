@@ -1,4 +1,4 @@
-const devices = [
+let devices = [
   { name: "MacBook Pro", ip: "192.168.1.22", type: "Laptop", status: "known" },
   { name: "Pixel 9", ip: "192.168.1.34", type: "Phone", status: "known" },
   { name: "Living Room TV", ip: "192.168.1.41", type: "Media", status: "known" },
@@ -22,6 +22,15 @@ const securityEl = document.querySelector("#security");
 const hiddenEl = document.querySelector("#hidden");
 const cardSsid = document.querySelector("#cardSsid");
 const cardMeta = document.querySelector("#cardMeta");
+const scanButton = document.querySelector("#scanDevices");
+const scanStatus = document.querySelector("#scanStatus");
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (char) => {
+    const entities = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+    return entities[char];
+  });
+}
 
 function escapeWifi(value) {
   return value.replace(/([\\;,:"])/g, "\\$1");
@@ -59,24 +68,71 @@ function generateQr() {
 
 function renderDevices() {
   const grid = document.querySelector("#deviceGrid");
-  grid.innerHTML = devices
+  grid.innerHTML = devices.length
+    ? devices
     .map((device) => {
       const badgeClass = device.status === "unknown" ? "badge warn" : "badge";
+      const meta = [device.type, device.mac, device.interface, device.state].filter(Boolean).join(" · ");
       return `
         <article class="device-card">
           <header>
-            <strong>${device.name}</strong>
-            <span class="${badgeClass}">${device.status}</span>
+            <strong>${escapeHtml(device.name)}</strong>
+            <span class="${badgeClass}">${escapeHtml(device.status)}</span>
           </header>
-          <small>${device.type}</small>
-          <span>${device.ip}</span>
+          <small>${escapeHtml(meta || "Unknown")}</small>
+          <span>${escapeHtml(device.ip)}</span>
         </article>
       `;
     })
-    .join("");
+    .join("")
+    : `<p class="empty-state">No devices found yet. Run a scan from the local backend.</p>`;
 
   document.querySelector("#knownCount").textContent = devices.filter((device) => device.status === "known").length;
   document.querySelector("#alertCount").textContent = devices.filter((device) => device.status === "unknown").length;
+}
+
+function updateSecuritySummary() {
+  const unknownDevices = devices.filter((device) => device.status === "unknown");
+  const firstUnknown = unknownDevices[0];
+  document.querySelector("#securityState").textContent = unknownDevices.length
+    ? `${unknownDevices.length} unknown ${unknownDevices.length === 1 ? "device" : "devices"}`
+    : "No unknown devices";
+  document.querySelector("#securityDetail").textContent = firstUnknown
+    ? `${firstUnknown.name} is visible at ${firstUnknown.ip}.`
+    : "All visible devices are on the known list.";
+}
+
+function formatScanTime(value) {
+  if (!value) return "Never scanned";
+
+  return new Intl.DateTimeFormat(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit"
+  }).format(new Date(value));
+}
+
+async function scanDevices() {
+  scanButton.disabled = true;
+  scanStatus.textContent = "Scanning local neighbour table...";
+
+  try {
+    const response = await fetch("/api/devices", { cache: "no-store" });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    const payload = await response.json();
+    devices = Array.isArray(payload.devices) ? payload.devices : [];
+    renderDevices();
+    updateSecuritySummary();
+
+    scanStatus.textContent = payload.error
+      ? `Scan completed with warnings: ${payload.error}`
+      : `Last scan ${formatScanTime(payload.scannedAt)} from ${payload.source || "local discovery"}`;
+  } catch (error) {
+    scanStatus.textContent = "Device API unavailable. Start the backend with python3 server.py.";
+  } finally {
+    scanButton.disabled = false;
+  }
 }
 
 function renderSpeed() {
@@ -123,13 +179,7 @@ document.querySelector("#copyPayload").addEventListener("click", async () => {
   await navigator.clipboard.writeText(wifiPayload());
 });
 
-document.querySelector("#scanDevices").addEventListener("click", () => {
-  const knownDevice = { name: "Kitchen Speaker", ip: "192.168.1.63", type: "Audio", status: "known" };
-  if (!devices.some((device) => device.ip === knownDevice.ip)) {
-    devices.splice(3, 0, knownDevice);
-  }
-  renderDevices();
-});
+scanButton.addEventListener("click", scanDevices);
 
 document.querySelector("#logSpeed").addEventListener("click", () => {
   speedLog.push(Math.round(360 + Math.random() * 110));
@@ -163,6 +213,7 @@ document.querySelector("#refreshHealth").addEventListener("click", () => {
 });
 
 renderDevices();
+updateSecuritySummary();
 renderSpeed();
 renderEvents();
 generateQr();
