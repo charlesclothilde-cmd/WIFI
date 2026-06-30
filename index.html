@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>WIFI Control</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Primary">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">W</div>
+          <div>
+            <strong>WIFI Control</strong>
+            <span>Self-hosted network desk</span>
+          </div>
+        </div>
+        <nav class="nav-list">
+          <a href="#qr" class="active">QR</a>
+          <a href="#devices">Devices</a>
+          <a href="#speed">Speed</a>
+          <a href="#security">Security</a>
+          <a href="#vpn">VPN</a>
+          <a href="#host">Host</a>
+        </nav>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Local network suite</p>
+            <h1>Wi-Fi QR code generator</h1>
+          </div>
+          <div class="status-strip" aria-label="System status">
+            <span><b id="knownCount">6</b> known</span>
+            <span><b id="alertCount">1</b> alert</span>
+            <span><b>VPN</b> ready</span>
+          </div>
+        </header>
+
+        <section id="qr" class="panel qr-panel">
+          <div class="panel-copy">
+            <p class="eyebrow">Share access</p>
+            <h2>Generate a scannable Wi-Fi card</h2>
+            <p>Build guest, home, and device-only network cards without exposing the password in plain text on the page.</p>
+          </div>
+
+          <form class="qr-form" id="wifiForm">
+            <label>
+              Network name
+              <input id="ssid" name="ssid" autocomplete="off" value="HomeLab-Guest" required />
+            </label>
+            <label>
+              Password
+              <input id="password" name="password" type="password" value="change-me-strongly" />
+            </label>
+            <div class="form-row">
+              <label>
+                Security
+                <select id="security" name="security">
+                  <option value="WPA" selected>WPA/WPA2/WPA3</option>
+                  <option value="WEP">WEP</option>
+                  <option value="nopass">Open</option>
+                </select>
+              </label>
+              <label class="toggle">
+                <input id="hidden" name="hidden" type="checkbox" />
+                <span>Hidden SSID</span>
+              </label>
+            </div>
+            <div class="button-row">
+              <button class="primary" type="submit" title="Generate QR">
+                <span aria-hidden="true">▦</span>
+                Generate
+              </button>
+              <button type="button" id="downloadQr" title="Download QR">
+                <span aria-hidden="true">↓</span>
+                Download
+              </button>
+              <button type="button" id="copyPayload" title="Copy payload">
+                <span aria-hidden="true">⧉</span>
+                Copy
+              </button>
+            </div>
+          </form>
+
+          <div class="qr-output" aria-live="polite">
+            <div id="qrCode" class="qr-code"></div>
+            <div class="share-card">
+              <span>Network</span>
+              <strong id="cardSsid">HomeLab-Guest</strong>
+              <small id="cardMeta">WPA/WPA2/WPA3 · visible</small>
+            </div>
+          </div>
+        </section>
+
+        <section id="devices" class="panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Network device dashboard</p>
+              <h2>Known devices</h2>
+            </div>
+            <button id="scanDevices" title="Scan devices"><span aria-hidden="true">⌕</span> Scan</button>
+          </div>
+          <div class="device-grid" id="deviceGrid"></div>
+        </section>
+
+        <section class="two-column">
+          <div id="speed" class="panel">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">Speed logger</p>
+                <h2>Recent checks</h2>
+              </div>
+              <button id="logSpeed" title="Log speed"><span aria-hidden="true">＋</span> Log</button>
+            </div>
+            <div class="speed-meter">
+              <div>
+                <span>Down</span>
+                <strong id="downSpeed">417</strong>
+                <small>Mbps</small>
+              </div>
+              <div>
+                <span>Up</span>
+                <strong id="upSpeed">51</strong>
+                <small>Mbps</small>
+              </div>
+              <div>
+                <span>Ping</span>
+                <strong id="pingSpeed">11</strong>
+                <small>ms</small>
+              </div>
+            </div>
+            <div class="chart" id="speedChart" aria-label="Speed log chart"></div>
+          </div>
+
+          <div id="security" class="panel">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">Intruder detector</p>
+                <h2>Watchlist</h2>
+              </div>
+              <button id="ackAlerts" title="Acknowledge alerts"><span aria-hidden="true">✓</span> Ack</button>
+            </div>
+            <div class="alert-card">
+              <b id="securityState">1 unknown device</b>
+              <span id="securityDetail">ESP-32-CAM joined from 192.168.1.78 at 22:41.</span>
+            </div>
+            <ul class="event-list" id="eventList"></ul>
+          </div>
+        </section>
+
+        <section class="two-column">
+          <div id="vpn" class="panel">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">Personal VPN</p>
+                <h2>Remote access</h2>
+              </div>
+              <label class="switch" title="Toggle VPN">
+                <input id="vpnToggle" type="checkbox" checked />
+                <span></span>
+              </label>
+            </div>
+            <div class="vpn-box">
+              <strong id="vpnState">WireGuard profile ready</strong>
+              <span id="vpnDetail">Endpoint 10.8.0.1 · 2 peers configured</span>
+            </div>
+          </div>
+
+          <div id="host" class="panel">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">Self-hosted dashboard</p>
+                <h2>Service health</h2>
+              </div>
+              <button id="refreshHealth" title="Refresh health"><span aria-hidden="true">↻</span> Refresh</button>
+            </div>
+            <div class="health-grid">
+              <div><span>App</span><b>online</b></div>
+              <div><span>Storage</span><b>2.4 GB</b></div>
+              <div><span>Logs</span><b id="logCount">24</b></div>
+              <div><span>Backup</span><b>03:00</b></div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
